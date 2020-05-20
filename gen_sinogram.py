@@ -2,19 +2,10 @@ import numpy as np
 #import cupy as cp
 from scipy.interpolate import interp2d
 import matplotlib.pyplot as plt
-import csv
-import os
-import sys
-# import astra
-import scipy.io as sio
 import glob
 import pywt
 import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
-
-# Shape of the data <captures, views, asics, rows, columns, counters>
-# Will need an airscan and a darkfield scan with the same shape from asics to counters
-# 1 view is sufficient as long as it has the same time period of the views in the captured data (dark field as well)
 
 
 def generate_projections(data, air, dark):
@@ -82,7 +73,7 @@ def filtering(projections):
     projections = np.multiply(projections, w)  # Correct each projection angle for detector flatness
 
     if param.parker == 1:
-        projections = projections  # Correct for Parker Weighting
+        pass  # Correct for Parker Weighting
 
     filt_len = int(np.max([64, 2**np.ceil(np.log2(2*param.nu))]))
 
@@ -90,8 +81,7 @@ def filtering(projections):
 
     d = 1  # Cut off (0~1)
     filt = filter_array(param.filter, ramp_kernel, filt_len, d)  # Calculate the full filter array
-    filt = np.tile(filt, [param.nv, 1])  # Copy the filter nv times (number of pixels vertically)
-    filt = np.transpose(filt)
+    filt = np.tile(np.reshape(filt, (np.size(filt), 1)), (1, param.nv))  # Copy the filter nv times (nv = number of pixels vertically)
 
     # For each projection, filter the data
     for idx, proj in enumerate(projections):
@@ -242,8 +232,10 @@ def correct_dead_pixels(data, dead_pixels=[]):
 def get_average_pixel_value(img, pixel):
     """
     Averages the dead pixel using the 8 nearest neighbours
-    :param img: the projection image
-    :param pixel: the problem pixel (is a 2-tuple)
+    :param img: 2D array
+                The projection image
+    :param pixel: tuple (row, column)
+                The problem pixel (is a 2-tuple)
     :return:
     """
     shape = np.shape(img)
