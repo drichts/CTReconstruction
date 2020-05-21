@@ -8,22 +8,28 @@ import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
 
 
-def generate_projections(data, air, dark):
+def generate_projections(data, air, dark, num_views=-1):
     """
     This function takes the captured data and calculates a projection at each capture (angle) projection = -ln(I/I0)
     Where I is the data intensity taken at that angle, and I0 is the airscan intensity
 
-    :param data: The data array; shape <captures, views, asics, rows, columns, counters>  (numpy array)
-                 Assume the asics are in the correct orientation relative to the others
+    :param data: 6D numpy array <captures, views, asics, rows, columns, counters>
+                The data array. Assume the asics are in the correct orientation relative to the others
 
-    :param air: The airscan data array; shape: <1 capture, views, asics, rows, columns, counters>  (numpy array)
-                    The # of views and view duration should be the same as for 1 capture of the 'data' array
+    :param air: 6D numpy array <1 capture, views, asics, rows, columns, counters>
+                The airscan data array. The number of views and view duration should be the same as for 1 capture of
+                the 'data' array
 
-    :param dark: The darkfield data array; shape: <1 capture, views, asics, rows, columns, counters>  (numpy array)
-                     The # of views and view duration should be the same as for 1 capture of the 'data' array
+    :param dark: 6D numpy array <1 capture, views, asics, rows, columns, counters>
+                The darkfield data array. The # of views and view duration should be the same as for 1 capture of the
+                'data' array
 
-    :return projections: The calculated projection data with dead pixels corrected and stripes removed
-                         Shape <captures, views, columns, rows, counters>
+    :param num_views: int
+                The number of views to sum to obtain the desired capture time length
+                Default: -1 (sum all views)
+
+    :return: 4D numpy array <counters, captures, rows, columns>
+                The calculated projection data with dead pixels corrected and stripes removed
     """
 
     np.seterr(divide='ignore', invalid='ignore')
@@ -32,14 +38,19 @@ def generate_projections(data, air, dark):
     data = np.subtract(data, dark)
     air = np.subtract(air, dark)
 
+    # Sum the desired number of views for each capture (default is to sum all views)
+    if num_views == -1:
+        data = np.sum(data, axis=1)
+        air = np.sum(air, axis=1)
+    else:
+        data = np.sum(data[:, 0:num_views], axis=1)
+        air = np.sum(air[:, 0:num_views], axis=1)
+
     # Calculate projections
     proj = -1*np.log(np.divide(data, air))
 
     # Correct for any non-responsive pixels
-    proj = correct_dead_pixels(proj)
-
-    # Remove any striping artifacts from the projection data
-    #proj = remove_stripe(projections, 33)  # Change remove_stripe
+    #proj = correct_dead_pixels(proj)
 
     # Concatenate the asics to get the full field of view
     data_shape = np.shape(proj)
@@ -51,16 +62,24 @@ def generate_projections(data, air, dark):
         projections = np.concatenate(projections, next_asic, axis=4)  # Concatenate each asic along column axis
 
     # Permute projections so x, y-direction order lines up with column, row order for ease of filtering and backprojection
-    projections = np.transpose(projections, axes=(0, 1, 3, 2, 4))
+    projections = np.transpose(projections, axes=(3, 0, 1, 2))
+
+    # Remove any striping artifacts from the projection data
+    # projections = multiple_image_remove_stripe(projections, 2)
 
     return projections
 
 
 def filtering(projections):
     """
+    Applies a ramp filter at low frequencies and the desired high-pass filter
 
-    :param projections:
-    :return:
+    :param projections: 4D numpy array
+                The projection data. Shape: <counters, captures, rows, columns>
+
+    :return: 4D numpy array
+                The filtered projection data. Shape: <counters, captures, rows, columns>
+
     Adapted from:  Kyungsang Kim (2020). 3D Cone beam CT (CBCT) projection backprojection FDK, iterative reconstruction
     Matlab examples (https://www.mathworks.com/matlabcentral/fileexchange/35548-3d-cone-beam-ct-cbct-projection-
     backprojection-fdk-iterative-reconstruction-matlab-examples), MATLAB Central File Exchange. Retrieved May 19, 2020.
@@ -81,24 +100,24 @@ def filtering(projections):
 
     d = 1  # Cut off (0~1)
     filt = filter_array(param.filter, ramp_kernel, filt_len, d)  # Calculate the full filter array
-    filt = np.tile(np.reshape(filt, (np.size(filt), 1)), (1, param.nv))  # Copy the filter nv times (nv = number of pixels vertically)
+    filt = np.tile(np.reshape(filt, (1, np.size(filt))), (param.nv, 1))  # Copy the filter nv times (nv = number of pixels vertically)
 
     # For each projection, filter the data
     for idx, proj in enumerate(projections):
 
-        filt_proj = np.zeros([filt_len, param.nv])
-        filt_proj[int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2), :] = proj  # Set proj data into the middle nu rows
-        filt_proj = fft(filt_proj, axis=0)  # Compute the Fourier transform along each column (across all rows)
+        filt_proj = np.zeros([param.nv, filt_len])
+        filt_proj[:, int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2)] = proj  # Set proj data into the middle nu rows
+        filt_proj = fft(filt_proj, axis=1)  # Compute the Fourier transform along each column
 
         filt_proj = filt_proj * filt  # Apply the filter to the Fourier transform of the data
-        filt_proj = np.real(ifft(filt_proj, axis=0))  # Get only the real portion of the inverse Fourier transform
+        filt_proj = np.real(ifft(filt_proj, axis=1))  # Get only the real portion of the inverse Fourier transform
 
         # Grab the filtered data and apply a correction factor based on the number of projections and system geometry
         if param.parker == 1:
-            proj = filt_proj[int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2), :] / \
+            proj = filt_proj[:, int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2)] / \
                    2/param.ps * (2*np.pi / (180/param.dang)) / 2 * (param.DSD/param.DSO)
         else:
-            proj = filt_proj[int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2), :] /\
+            proj = filt_proj[:, int(filt_len/2-param.nu/2):int(filt_len/2+param.nu/2)] /\
                    2/param.ps * (2*np.pi/param.num_proj) / 2 * (param.DSD/param.DSO)
 
         projections[idx] = proj  # Reassign the unfiltered data as the newly filtered data
@@ -160,12 +179,43 @@ def filter_array(filter, kernel, order, d):
     return filt
 
 
+def CT_backprojection(projections):
+    """
+    This function takes the projection data and outputs the CT image
+
+    :param projections: 4D numpy array
+                The projection data. Shape <counter, capture, row, column>
+
+    :return: 4D numpy array
+                The CT image. Shape <counter, x, y, z>, where z is along the axial direction
+    """
+    num_counters = len(projections)  # Get the number of counters
+
+    # The empty array for the CT volume
+    image = np.zeros([num_counters, param.nx, param.ny, param.nz])
+
+    # Go through each energy bin in succession
+    for counter, energydata in enumerate(projections):
+        # Go through every projection angle
+        for angle, proj in enumerate(energydata):
+            new_data = backprojection(proj, angle)  # Get the backprojection of the current angle
+            image[counter] = np.add(image[counter], new_data)  # Add it to the volume
+
+    return image
+
+
 def backprojection(projection, proj_num):
     """
-    Takes a single projection angle and backprojects the data into an image of the desired size
-    :param projection: The projection data for the angle
-    :param proj_num: The angle the projection was obtained at
-    :return vol: The backprojected data of the size of the desired reconstructed image
+    Takes a single projection angle and backprojects the data into an image of the desired volume
+
+    :param projection: 2D numpy array
+                The projection data for the current angle
+
+    :param proj_num: int
+                The current angle (in degrees)
+
+    :return: 3D numpy array
+                The backprojected data
 
     Adapted from:  Kyungsang Kim (2020). 3D Cone beam CT (CBCT) projection backprojection FDK, iterative reconstruction
     Matlab examples (https://www.mathworks.com/matlabcentral/fileexchange/35548-3d-cone-beam-ct-cbct-projection-
@@ -179,7 +229,6 @@ def backprojection(projection, proj_num):
     # Transpose the xx, yy meshgrid into coordinates measured from axes based on the current angle
     rx = xx * np.cos(angle_rad - np.pi / 2) + yy * np.sin(angle_rad - np.pi / 2)
     ry = -xx * np.sin(angle_rad - np.pi / 2) + yy * np.cos(angle_rad - np.pi / 2)
-
 
     pu = ((rx * param.DSD / (ry + param.DSO)) + param.us[0]) / (-param.ps) + 1
     ratio = param.DSO**2 / (param.DSO + ry)**2
@@ -203,16 +252,12 @@ def backprojection(projection, proj_num):
             #cp.cuda.Stream.null.synchronize()
             #vol[:,:, iz] = (ratio * interp2d(pu, pv, projection, kind=param.interpolation_type))
         else:
-            pv =((param.zs[iz] * param.DSD / (ry + param.DSO)) - param.vs[0]) / param.dv + 1
-            vol[:,:, iz] = (ratio * interp2d(pu, pv, projection, kind=param.interpolation_type))
+            pv = ((param.zs[iz] * param.DSD / (ry + param.DSO)) - param.vs[0]) / param.dv + 1
+            vol[:, :, iz] = (ratio * interp2d(pu, pv, projection, kind=param.interpolation_type))
 
     vol[np.isnan(vol)] = 0
 
     return vol
-
-
-def CT_backprojection(projections):
-    return
 
 
 def correct_dead_pixels(data, dead_pixels=[]):
@@ -279,9 +324,33 @@ def get_average_pixel_value(img, pixel):
     return avg
 
 
+def multiple_proj_remove_stripe(images, level, wname='db5', sigma=1.5):
+    """
+    Calls the remove stripe function multiple times for the number of 2d projections images in the 4d data
+    :param images: 4D numpy array
+                The projection image data. Shape <counters, captures, rows, columns>
+    :param level: int
+                The highest decomposition level.
+    :param wname: str, optional
+                The wavelet type. Default value is 'db5'
+    :param sigma: float, optional
+                The damping factor in Fourier space. Default value is '1.5'
+    :return: 4D numpy array
+                The resulting filtered images.
+    """
+
+    for i, energybin in enumerate(images):
+        for j, img in enumerate(energybin):
+            img = np.rot90(img, axes=(0, 1))  # Rotate the image so the horizontal stripes are now vertical
+            img = remove_stripe(img, level, wname=wname, sigma=sigma)  # Remove the stripes
+            images[i, j] = np.rot90(img, axes=(1, 0))  # Rotate the image back and replace the uncorrected image
+
+    return images
+
+
 def remove_stripe(img, level, wname='db5', sigma=1.5):
     """
-    Suppress horizontal stripe in a sinogram using the Fourier-Wavelet based method by Munch et al.
+    Suppress vertical stripe artifacts using the Fourier-Wavelet based method by Munch et al.
     :param img: 2d array
                 The two-dimensional array representing the image or the sinogram to de-stripe.
     :param level: int
