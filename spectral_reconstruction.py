@@ -251,19 +251,19 @@ def correct_dead_pixels(data, dead_pixel_mask):
     :param data: 5D numpy array
                 The data array in which to correct the pixels <counter, captures, asics, rows, columns>
     :param dead_pixel_mask: 3D numpy array
-                Mask with 1 at good pixel coordinates and nan at bad pixel coordinates <asic, row, column>
+                Mask with value 1 at good pixel coordinates and nan at bad pixel coordinates <asic, row, column>
     :return: The data array corrected for the dead pixels
     """
     dead_pixels = np.array(np.argwhere(np.isnan(dead_pixel_mask)), dtype='int')  # Find the dead pixels (i.e = to nan)
+    data_shape = np.shape(data)
     for coords in dead_pixels:
         asic = coords[0]  # The asic number
         pixel = coords[1:]  # The row, column coordinates
-        for i, counter in enumerate(data):
-            for j, capture in enumerate(counter):
+        for i in np.arange(data_shape[0]):
+            for j in np.arange(data_shape[1]):
                 # Pixel is corrected in every counter and capture
-                img = capture[asic]  # The 2D row, column image
-                avg_val = get_average_pixel_value(img, pixel, dead_pixel_mask[asic])
-                data[i, j, asic, coords[0], coords[1]] = avg_val  # Set the new value in the 5D array
+                avg_val = get_average_pixel_value(data[i, j, asic], pixel, dead_pixel_mask[asic])
+                data[i, j, asic, pixel[0], pixel[1]] = avg_val  # Set the new value in the 5D array
 
     return data
 
@@ -324,7 +324,7 @@ def get_average_pixel_value(img, pixel, dead_pixel_mask):
     return avg
 
 
-def multiple_proj_remove_stripe(images, level, wname='db5', sigma=1.5):
+def multiple_proj_remove_stripe(images, level, wname='db5', sigma=1.2):
     """
     Calls the remove stripe function multiple times for the number of 2d projections images in the 4d data
     :param images: 4D numpy array
@@ -334,21 +334,22 @@ def multiple_proj_remove_stripe(images, level, wname='db5', sigma=1.5):
     :param wname: str, optional
                 The wavelet type. Default value is 'db5'
     :param sigma: float, optional
-                The damping factor in Fourier space. Default value is '1.5'
+                The damping factor in Fourier space. Default value is '1.2'
     :return: 4D numpy array
                 The resulting filtered images.
     """
-
+    # Rearrange so that in the second for loop each image (sinogram) is angles vs. columns
+    images = np.transpose(images, axes=(0, 2, 1, 3))
     for i, energybin in enumerate(images):
         for j, img in enumerate(energybin):
-            img = np.rot90(img, axes=(0, 1))  # Rotate the image so the horizontal stripes are now vertical
-            img = remove_stripe(img, level, wname=wname, sigma=sigma)  # Remove the stripes
-            images[i, j] = np.rot90(img, axes=(1, 0))  # Rotate the image back and replace the uncorrected image
+            img = remove_stripe(img, level, wname=wname, sigma=sigma)  # Remove the stripes in one direction
+            images[i, j, :, :] = img
+    images = np.transpose(images, axes=(0, 2, 1, 3))  # Rearrange back to the proper orientation
 
     return images
 
 
-def remove_stripe(img, level, wname='db5', sigma=1.5):
+def remove_stripe(img, level, wname='db5', sigma=1.2):
     """
     Suppress vertical stripe artifacts using the Fourier-Wavelet based method by Munch et al.
     :param img: 2d array
@@ -356,9 +357,10 @@ def remove_stripe(img, level, wname='db5', sigma=1.5):
     :param level: int
                 The highest decomposition level.
     :param wname: str, optional
-                The wavelet type. Default value is 'db5'
+                The wavelet filter. Default value is 'db5'. Check pywavelets for different possible filters
+                db is Daubechies, and the level goes from 2-38
     :param sigma: float, optional
-                The damping factor in Fourier space. Default value is '1.5'
+                The damping factor in Fourier space. Default value is '1.2'
     :return: 2d array
                 The resulting filtered image.
     References

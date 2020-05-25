@@ -5,8 +5,8 @@ import numpy as np
 ps = 0.330  # Pixel size of the physical detector
 
 # Number of pixels in the reconstructed image in the specified direction
-nx = 120  # x-direction
-ny = 120  # y-direction
+nx = 119  # x-direction
+ny = 119  # y-direction
 nz = 24  # z-direction (axial direction)
 
 # Physical size of the entire reconstructed image in the specified direction
@@ -15,15 +15,15 @@ sy = 30  # y-dir (mm)
 sz = 8  # Axial direction (z) (mm)
 
 # Number of pixels the physical detector along each direction
-nu = 120  # Longer (horizontal) direction
+nu = 119  # Longer (horizontal) direction
 nv = 24  # Shorter (vertical) direction
 
 # Physical detector size
 su = nu*ps  # mm (horizontal dir)
 sv = nv*ps  # mm (vertical dir)
 
-DSD = 430  # Distance from the x-ray source to detector (mm)
-DSO = 320  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
+DSD = 435  # Distance from the x-ray source to detector (mm)
+DSO = 315  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
 
 # Angle settings
 direction = 1  # Rotation direction (gantry rotation direction) (1 or -1)
