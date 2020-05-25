@@ -49,9 +49,8 @@ def generate_projections(data, air, dark, num_views=-1):
     air = np.transpose(air, axes=(4, 0, 1, 2, 3))
 
     # Correct for any non-responsive pixels
-    dead_pixel_mask = np.ones(np.shape(data)[2:])  # For now no known dead pixels
-    data = correct_dead_pixels(data)
-    air = correct_dead_pixels(air)
+    data = correct_dead_pixels(data, param.dead_pixel_mask)
+    air = correct_dead_pixels(air, param.dead_pixel_mask)
 
     # Calculate projections
     proj = -1*np.log(np.divide(data, air))
@@ -63,7 +62,7 @@ def generate_projections(data, air, dark, num_views=-1):
     projections = proj[:, :, 0]  # Get the initial asic
     for n in np.arange(1, num_asics):
         next_asic = proj[:, :, n]
-        projections = np.concatenate(projections, next_asic, axis=4)  # Concatenate each asic along column axis
+        projections = np.concatenate((projections, next_asic), axis=3)  # Concatenate each asic along column axis
 
     projections = multiple_proj_remove_stripe(projections, 2)  # Remove any striping artifacts from the projection data
 
@@ -126,6 +125,7 @@ def ramp_flat(n):
                 The length of the filter based on the data
     :return: 1d array
                 The ramp filter of the correct size for the projection data
+
     Adapted from:  Kyungsang Kim (2020). 3D Cone beam CT (CBCT) projection backprojection FDK, iterative reconstruction
     Matlab examples (https://www.mathworks.com/matlabcentral/fileexchange/35548-3d-cone-beam-ct-cbct-projection-
     backprojection-fdk-iterative-reconstruction-matlab-examples), MATLAB Central File Exchange. Retrieved May 19, 2020.
@@ -153,6 +153,7 @@ def filter_array(filter, kernel, order, d=1):
                 Cutoff for the high-pass filter. On the range [0, 1]
     :return: 1D numpy array
                 The filter array
+
     Adapted from:  Kyungsang Kim (2020). 3D Cone beam CT (CBCT) projection backprojection FDK, iterative reconstruction
     Matlab examples (https://www.mathworks.com/matlabcentral/fileexchange/35548-3d-cone-beam-ct-cbct-projection-
     backprojection-fdk-iterative-reconstruction-matlab-examples), MATLAB Central File Exchange. Retrieved May 19, 2020.
