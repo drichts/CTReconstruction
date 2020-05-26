@@ -3,6 +3,16 @@ from scipy.ndimage import map_coordinates
 import pywt
 import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
+import matplotlib.pyplot as plt
+
+
+def main(data, air, dark, num_views=-1):
+
+    proj = generate_projections(data, air, dark, num_views=num_views)
+    proj = filtering(proj)
+    images = CT_backprojection(proj)
+
+    return images
 
 
 def generate_projections(data, air, dark, num_views=-1):

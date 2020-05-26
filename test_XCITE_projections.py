@@ -2,6 +2,7 @@ import numpy as np
 from scipy.io import loadmat
 import glob
 import re
+import spectral_reconstruction as sct
 
 path = 'D:/Research/Python Data/Redlen/Test Projections/'
 files = glob.glob(path + '*proj.mat')

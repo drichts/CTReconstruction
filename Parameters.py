@@ -8,10 +8,11 @@ num_asics = 2
 dead_pixel_mask = np.ones([num_asics, 24, 36])
 
 ps = 0.330  # Pixel size of the physical detector
+t = 122
 
 # Number of pixels in the reconstructed image in the specified direction
-nx = 119  # x-direction
-ny = 119  # y-direction
+nx = t  # x-direction
+ny = t  # y-direction
 nz = 24  # z-direction (axial direction)
 
 # Physical size of the entire reconstructed image in the specified direction
@@ -20,7 +21,8 @@ sy = 30  # y-dir (mm)
 sz = 8  # Axial direction (z) (mm)
 
 # Number of pixels the physical detector along each direction
-nu = 36*num_asics  # Longer (horizontal) direction
+#nu = 36*num_asics  # Longer (horizontal) direction
+nu = t
 nv = 24  # Shorter (vertical) direction
 
 # Physical detector size
