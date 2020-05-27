@@ -3,7 +3,6 @@ from scipy.ndimage import map_coordinates
 import pywt
 import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
-import matplotlib.pyplot as plt
 
 
 def main(data, air, dark, num_views=-1):
@@ -244,12 +243,12 @@ def backprojection(projection, proj_num):
 
     pu = ((rx * param.DSD / (ry + param.DSO)) + param.us[0]) / (-param.ps) + 1
     ratio = param.DSO**2 / (param.DSO + ry)**2
-
     for iz in np.arange(param.nz):
 
         pv = ((param.zs[iz] * param.DSD / (ry + param.DSO)) - param.vs[0]) / param.ps + 1
         coords = np.array([np.ravel(pv), np.ravel(pu)])
-        vol[:, :, iz] = ratio * np.reshape(map_coordinates(projection, coords, mode='nearest'), (param.ny, param.nx))
+        vol[:, :, iz] = ratio * np.reshape(map_coordinates(projection, coords, order=param.spline_order, mode='nearest')
+                                           , (param.ny, param.nx))
 
     vol[np.isnan(vol)] = 0
     return vol

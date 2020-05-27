@@ -50,6 +50,9 @@ dz = sz/nz  # Reconstructed image z-dir (axial) voxel
 # This is correction for the detector rotation shift (real size, i.e. mm)
 off_u, off_v = 0, 0  # Horizontal, vertical
 
+# Spline interpolation order for remapping in backprojection (function numpy.ndimage.map_coordinates)
+spline_order = 1  # Options: 0-5  CAUTION: reconstruction time increases significantly with order > 3
+
 # Geometry calculations for center of each voxel in each direction (in mm measured from the center of the reconstructed
 # image or the physical detector)
 xs = np.arange(-(nx-1)/2, nx/2, 1) * dx  # Center of voxels in x-dir
