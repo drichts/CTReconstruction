@@ -2,27 +2,29 @@ import numpy as np
 
 # Parameter setting
 
+num_asics = 2  # Number of ASICs (2 per module)
+
 # Dead pixel mask <asic, row, column>
 # Set: dead_pixel_mask[a, r, c] = np.nan
-num_asics = 2
 dead_pixel_mask = np.ones([num_asics, 24, 36])
 
 ps = 0.330  # Pixel size of the physical detector
-t = 122
 
-# Number of pixels in the reconstructed image in the specified direction
-nx = t  # x-direction
-ny = t  # y-direction
+# Number of voxels in the reconstructed image in the specified direction
+#nx = 36*num_asics  # x-direction
+#ny = 36*num_asics  # y-direction
+nx = 122
+ny = 122
 nz = 24  # z-direction (axial direction)
 
 # Physical size of the entire reconstructed image in the specified direction
-sx = 30  # x-dir (mm)
-sy = 30  # y-dir (mm)
+sx = 30 #nx*ps  # x-dir (mm)
+sy = 30 #ny*ps  # y-dir (mm)
 sz = 8  # Axial direction (z) (mm)
 
 # Number of pixels the physical detector along each direction
 #nu = 36*num_asics  # Longer (horizontal) direction
-nu = t
+nu = 122
 nv = 24  # Shorter (vertical) direction
 
 # Physical detector size

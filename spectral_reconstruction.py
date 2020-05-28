@@ -5,15 +5,6 @@ import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
 
 
-def main(data, air, dark, num_views=-1):
-
-    proj = generate_projections(data, air, dark, num_views=num_views)
-    proj = filtering(proj)
-    images = CT_backprojection(proj)
-
-    return images
-
-
 def generate_projections(data, air, dark, num_views=-1):
     """
     This function takes the captured data and calculates a projection at each capture (angle) projection = -ln(I/I0)
@@ -58,8 +49,8 @@ def generate_projections(data, air, dark, num_views=-1):
     air = np.transpose(air, axes=(4, 0, 1, 2, 3))
 
     # Correct for any non-responsive pixels
-    data = correct_dead_pixels(data, param.dead_pixel_mask)
-    air = correct_dead_pixels(air, param.dead_pixel_mask)
+    data = correct_dead_pixels(data)
+    air = correct_dead_pixels(air)
 
     # Calculate projections
     proj = -1*np.log(np.divide(data, air))
@@ -72,8 +63,6 @@ def generate_projections(data, air, dark, num_views=-1):
     for n in np.arange(1, num_asics):
         next_asic = proj[:, :, n]
         projections = np.concatenate((projections, next_asic), axis=3)  # Concatenate each asic along column axis
-
-    projections = multiple_proj_remove_stripe(projections, 2)  # Remove any striping artifacts from the projection data
 
     return projections
 
@@ -254,13 +243,14 @@ def backprojection(projection, proj_num):
     return vol
 
 
-def correct_dead_pixels(data, dead_pixel_mask):
+def correct_dead_pixels(data, dead_pixel_mask=param.dead_pixel_mask):
     """
     This is to correct for known dead pixels. Takes the average of the eight surrounding pixels.
     Could implement a more sophisticated algorithm here if needed.
     :param data: 5D numpy array
                 The data array in which to correct the pixels <counter, captures, asics, rows, columns>
     :param dead_pixel_mask: 3D numpy array
+                Default: dead_pixel_mask from Parameters.py
                 Mask with value 1 at good pixel coordinates and nan at bad pixel coordinates <asic, row, column>
     :return: The data array corrected for the dead pixels
     """
@@ -288,7 +278,8 @@ def get_average_pixel_value(img, pixel, dead_pixel_mask):
                 The problem pixel (is a 2-tuple)
     :param dead_pixel_mask: 2D numpy array
                 Mask with 1 at good pixel coordinates and nan at bad pixel coordinates
-    :return:
+                dead_pixel_mask of the specific asic in question
+    :return: the average value of the surrounding pixels
     """
     shape = np.shape(img)
     row, col = pixel
@@ -412,5 +403,3 @@ def remove_stripe(img, level, wname='db5', sigma=1.2):
         img = pywt.idwt2((img, (cH[i], cV[i], cD[i])), wname)
 
     return img[0:nrow, 0:ncol]
-
-

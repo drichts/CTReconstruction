@@ -1,0 +1,39 @@
+Instructions to utilize the CT reconstruction code
+
+Parameters.py: All scan parameters are set in this file.
+
+Parameters to change:
+1. The number of ASICS (num_asics) is 2 multiplied by the number of modules in your detector.
+2. DSD is the source to detector distance in mm.
+3. DSO is the source to center of rotation (or object) distance.
+4. direction is the direction of rotation of the gantry (if the object is stationary and the x-ray tube and detector
+   are rotating around it) -1 for ccw (I think) 1 for clockwise
+   (if unsure what to set to play with both to see which gives the better image)
+5. dang is the angle between projections (ex. if taking 180 projections, dang would be 2)
+6. filter is the type of high-pass filter used as the roll off on the ramp filter ('hamming' is the default)
+   If another type of high-pass filter is desired, it can be added in the if else portion of the 'filtering' function
+   in spectral_reconstruction.py
+7. off_u and off_v are the offsets (in mm) in the longer and shorter detector dimensions, respectively.
+   These are used if the center of the detector is not lined up with the axis of rotation.
+8. spline-order is the order of spline interpolation used to remap the projections values in backprojection.
+   The default value is 1, as it offers the lowest noise in the data I've reconstructed.
+9. The deadpixel mask is a numpy matrix of ones, with pixels that are non-conforming set to nan
+   The pixels have coordinates (asic, row, column)
+
+spectral_reconstruction.py: What functions to call in order to reconstruct your projections.
+
+1. Make sure your data is in 1 array with shape <captures, views, asics, rows, columns, counters>.
+   You can np.transpose() to get the axes in the correct order.
+2. Make sure you have an air scan and a dark current scan with the same shape as the data, but only 1 capture is
+   necessary. The dark current scan may not strictly be necessary, if it is not desired comment out lines 35 and 36 in
+   spectral_reconstruction.py, function generate_projections.
+3. If you have split up your captures into multiple views, choose how many views per projections you want to use in the
+   reconstruction.
+4. Call generate_projections and hand it your data, the air scan, the dark scan, and if you want to reconstruct a subset
+   of views, set num_views equal to that number n (num_views=n) as the last parameter.
+5. OPTIONAL: call multiple_proj_remove_stripe, handing it the projections from generate_projections.
+   This function is used to correct for ring artifacts in the final reconstructed images, it removes stripe artifacts
+   in the sinogram stage. CAUTION: it can cause more severe ring artifacts and distortions
+6. Call filtering, handing it the projections generate_projections (or multiple_proj_remove_stripe) spits out.
+7. Call CT_backprojection, handing it the filtered projections given by filtering.
+   This spits out the full reconstructed volume with the shape <counter, x, y, z>
