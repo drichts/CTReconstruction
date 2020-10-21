@@ -15,11 +15,11 @@ def generate_projections(data, air, dark):
     :param data: 4D ndarray <captures, rows, columns, counters>
                 The data array. The captures should all be of equal time length
 
-    :param air: 4D ndarray <1 capture, rows, columns, counters>
+    :param air: 3D ndarray <rows, columns, counters>
                 The airscan data array. The capture duration should be equal to the duration of one capture of the
                 data array
 
-    :param dark: 4D ndarray <1 capture, rows, columns, counters>
+    :param dark: 3D ndarray <rows, columns, counters>
                 The darkfield data array. The capture duration should be equal to the duration of one capture of the
                 data array
 
@@ -33,16 +33,15 @@ def generate_projections(data, air, dark):
     data = np.subtract(data, dark)
     air = np.subtract(air, dark)
 
-    # Permute to order <counter, capture(angle), asic, row, column>
-    data = np.transpose(data, axes=(3, 0, 1, 2))
-    air = np.transpose(air, axes=(3, 0, 1, 2))
-
     # Correct for any non-responsive pixels
-    data = correct_dead_pixels(data)
-    air = correct_dead_pixels(air)
+    # data = correct_dead_pixels(data)
+    # air = correct_dead_pixels(air)
 
     # Calculate projections
-    proj = -1*np.log(np.divide(data, air))
+    proj = -1 * np.log(np.divide(data, air))
+
+    # Permute to order <counter, capture(angle), row, column> or <counter, row, column>
+    proj = np.transpose(proj, axes=(3, 0, 1, 2))
 
     return proj
 
@@ -240,7 +239,7 @@ def correct_dead_pixels(data):
     Could implement a more sophisticated algorithm here if needed.
 
     :param data: 4D ndarray
-                The data array in which to correct the pixels <counter, captures, rows, columns>
+                The data array in which to correct the pixels <captures, rows, columns, counter>
 
     :return: The data array corrected for the dead pixels
     """
