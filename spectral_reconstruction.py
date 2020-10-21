@@ -338,7 +338,7 @@ def multiple_proj_remove_stripe(images, level, wname='db5', sigma=1.2):
     :return: 4D numpy array
                 The resulting filtered images.
     """
-
+    
     # Rearrange so that in the second for loop each image (sinogram) is angles vs. columns
     images = np.transpose(images, axes=(0, 2, 1, 3))
     for i, energybin in enumerate(images):
