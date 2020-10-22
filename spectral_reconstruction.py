@@ -34,8 +34,8 @@ def generate_projections(data, air, dark):
     air = np.subtract(air, dark)
 
     # Correct for any non-responsive pixels
-    # data = correct_dead_pixels(data)
-    # air = correct_dead_pixels(air)
+    data = correct_dead_pixels(data)
+    air = correct_dead_pixels(air)
 
     # Calculate projections
     proj = -1 * np.log(np.divide(data, air))
@@ -249,9 +249,9 @@ def correct_dead_pixels(data):
     data_shape = np.shape(data)
     for pixel in dead_pixels:
         for i in np.arange(data_shape[0]):
-            for j in np.arange(data_shape[1]):
+            for j in np.arange(data_shape[-1]):
                 # Pixel is corrected in every counter and capture
-                avg_val = get_average_pixel_value(data[i, j], pixel, param.DEAD_PIXEL_MASK)
+                avg_val = get_average_pixel_value(data[i, :, :, j], pixel, param.DEAD_PIXEL_MASK)
                 data[i, j, pixel[0], pixel[1]] = avg_val  # Set the new value in the 4D array
 
     return data
