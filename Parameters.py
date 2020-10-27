@@ -2,11 +2,11 @@ import numpy as np
 
 # Parameter setting
 
-NUM_ASICS = 2  # Number of ASICs (2 per module)
+NUM_ASICS = 8  # Number of ASICs (2 per module)
 
-# Dead pixel mask <asic, row, column>
-# Set: dead_pixel_mask[a, r, c] = np.nan
-DEAD_PIXEL_MASK = np.ones([NUM_ASICS, 24, 36])
+# Dead pixel mask <row, column>
+# Set: dead_pixel_mask[r, c] = np.nan
+DEAD_PIXEL_MASK = np.ones([24, 288])
 
 PS = 0.330  # Pixel size of the physical detector
 
@@ -16,8 +16,8 @@ NY = 36*NUM_ASICS  # y-direction
 NZ = 24  # z-direction (axial direction)
 
 # Physical size of the entire reconstructed image in the specified direction
-SX = 30  # nx*ps, x-dir (mm)
-SY = 30  # ny*ps, y-dir (mm)
+SX = NX*PS  # x-dir (mm)
+SY = NY*PS  # y-dir (mm)
 SZ = 8  # Axial direction (z) (mm)
 
 # Number of pixels the physical detector along each direction
@@ -28,8 +28,8 @@ NV = 24  # Shorter (vertical) direction
 SU = NU*PS  # mm (horizontal dir)
 SV = NV*PS  # mm (vertical dir)
 
-DSD = 435  # Distance from the x-ray source to detector (mm)
-DSO = 315  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
+DSD = 578  # Distance from the x-ray source to detector (mm)
+DSO = 322  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
 
 # Angle settings
 DIRECTION = 1  # Rotation direction (gantry rotation direction) (1 or -1)
