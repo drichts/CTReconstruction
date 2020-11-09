@@ -28,8 +28,8 @@ NV = 24  # Shorter (vertical) direction
 SU = NU*PS  # mm (horizontal dir)
 SV = NV*PS  # mm (vertical dir)
 
-DSD = 578  # Distance from the x-ray source to detector (mm)
-DSO = 322  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
+DSD = 577  # Distance from the x-ray source to detector (mm)
+DSO = 323  # Distance from x-ray source to the axis of rotation (isocenter) (mm)
 
 # Angle settings
 DIRECTION = 1  # Rotation direction (gantry rotation direction) (1 or -1)
