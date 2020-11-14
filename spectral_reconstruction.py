@@ -3,6 +3,9 @@ from scipy.ndimage import map_coordinates
 import pywt
 import Parameters as param
 from numpy.fft import fftshift, ifftshift, fft, ifft
+import matlab as mat
+from datetime import datetime
+from matlab import engine
 
 
 def generate_projections(data, air, dark):
@@ -38,7 +41,7 @@ def generate_projections(data, air, dark):
     # air = correct_dead_pixels(air)
 
     # Calculate projections
-    proj = -1 * np.log(np.divide(data, air))
+    proj = np.log(air) - np.log(data)
 
     # Permute to order <counter, capture(angle), row, column> or <counter, row, column>
     proj = np.transpose(proj, axes=(3, 0, 1, 2))
@@ -180,18 +183,29 @@ def CT_backprojection(projections):
     backprojection-fdk-iterative-reconstruction-matlab-examples), MATLAB Central File Exchange. Retrieved May 19, 2020.
     """
     num_counters = len(projections)  # Get the number of counters
+    if param.MAT:
 
-    # The empty array for the CT volume
-    image = np.zeros([num_counters, param.NX, param.NY, param.NZ])
+        param_dict = {'nProj': str(param.NUM_PROJ), 'dir': str(param.DIRECTION), 'dang': str(param.DANG),
+                      'nx': str(param.NX), 'ny': str(param.NY), 'nz': str(param.NZ), 'DSD': str(param.DSD),
+                      'DSO': str(param.DSO), 'us': str(param.US), 'vs': str(param.VS), 'zs': str(param.ZS),
+                      'ps': str(param.PS), 'bins': str(num_counters)}
 
-    # Go through each energy bin in succession
-    for counter, energydata in enumerate(projections):
-        # Go through every projection angle
-        for angle, proj in enumerate(energydata):
-            new_data = backprojection(proj, angle)  # Get the backprojection of the current angle
-            image[counter] = np.add(image[counter], new_data)  # Add it to the volume
+        mat_eng = engine.start_matlab()
+        mat_eng.workspace['proj'] = projections.tolist()
+        mat_eng.workspace['param'] = param_dict
 
-    return image
+    else:
+        # The empty array for the CT volume
+        image = np.zeros([num_counters, param.NX, param.NY, param.NZ])
+
+        # Go through each energy bin in succession
+        for counter, energydata in enumerate(projections):
+            # Go through every projection angle
+            for angle, proj in enumerate(energydata):
+                new_data = backprojection(proj, angle)  # Get the backprojection of the current angle
+                image[counter] = np.add(image[counter], new_data)  # Add it to the volume
+
+        return image
 
 
 def backprojection(projection, proj_num):
@@ -211,6 +225,7 @@ def backprojection(projection, proj_num):
     Matlab examples (https://www.mathworks.com/matlabcentral/fileexchange/35548-3d-cone-beam-ct-cbct-projection-
     backprojection-fdk-iterative-reconstruction-matlab-examples), MATLAB Central File Exchange. Retrieved May 19, 2020.
     """
+
     angle_rad = param.DEG[proj_num] / 360 * 2 * np.pi  # The current projection angle (in radians)
     vol = np.zeros([param.NX, param.NY, param.NZ])  # Empty array to hold the backprojected image
 
@@ -226,9 +241,9 @@ def backprojection(projection, proj_num):
 
         pv = ((param.ZS[iz] * param.DSD / (ry + param.DSO)) - param.VS[0]) / param.PS + 1
         coords = np.array([np.ravel(pv), np.ravel(pu)])
+
         vol[:, :, iz] = ratio * np.reshape(map_coordinates(projection, coords, order=param.SPLINE_ORDER, mode='nearest')
                                            , (param.NY, param.NX))
-
     vol[np.isnan(vol)] = 0
     return vol
 

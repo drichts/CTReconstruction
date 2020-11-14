@@ -47,7 +47,7 @@ DY = SY/NY  # Reconstructed image y-dir voxel
 DZ = SZ/NZ  # Reconstructed image z-dir (axial) voxel
 
 # This is correction for the detector rotation shift (real size, i.e. mm)
-OFF_U, OFF_V = 0, 0  # Horizontal, vertical
+OFF_U, OFF_V = -1.7, 0  # Horizontal, vertical
 
 # Spline interpolation order for remapping in backprojection (function numpy.ndimage.map_coordinates)
 SPLINE_ORDER = 1  # Options: 0-5  CAUTION: reconstruction time increases significantly with order > 3
@@ -61,3 +61,6 @@ ZS = np.arange(-(NZ-1)/2, NZ/2, 1) * DZ  # Center of all voxels in the axial dir
 US = np.arange(-(NU-1)/2, NU/2, 1) * PS + OFF_U  # Center of pixels in the physical detector (horizontally)
 VS = np.arange(-(NV-1)/2, NV/2, 1) * PS + OFF_V  # Center of pixels in the physical detector (vertically)
 
+# If running the MATLAB CTbackprojection
+MAT = False  # True if running the Matlab CTbackprojection
+INTERPTYPE = 'linear'  # 'linear' or 'nearest'
